@@ -22,14 +22,7 @@ import java.util.function.Consumer;
 public class HttpProxy {
     // 添加常量定义
     private static final Set<String> HOP_BY_HOP_HEADERS = Set.of(
-        "connection",
-        "keep-alive",
-        "proxy-authentication",
-        "proxy-authorization",
-        "te",
-        "trailer",
-        "transfer-encoding",
-        "upgrade"
+        "connection"
     );
 
     private final HttpClient client;
@@ -71,7 +64,7 @@ public class HttpProxy {
     private Flux<Void> handleRequest(HttpServerRequest request,
                                      HttpServerResponse response) {
         String path = request.uri();
-        String targetUrl = "localhost:3000" + path;
+        String targetUrl = "localhost:8888" + path;
 
         return client
                 .headers(getHeadersConsumer(request))
