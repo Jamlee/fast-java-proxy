@@ -2,6 +2,7 @@ package org.example;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.timeout.IdleStateHandler;
 import reactor.core.publisher.Flux;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.server.HttpServer;
@@ -23,7 +24,12 @@ public class HttpProxy {
     private static final Set<String> HOP_BY_HOP_HEADERS = Set.of(
         "connection",
         "keep-alive",
-        "transfer-encoding"
+        "proxy-authentication",
+        "proxy-authorization",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade"
     );
 
     private final HttpClient client;
@@ -49,6 +55,12 @@ public class HttpProxy {
         this.server = HttpServer.create()
                 .runOn(loop)
                 .port(port)
+                .doOnConnection(connection -> {
+                    // 添加 IdleStateHandler 来检测连接的空闲状态，读空闲时间为 120 秒
+                    connection.addHandlerLast(new IdleStateHandler(120, 0, 0, TimeUnit.SECONDS));
+                    // 处理空闲事件，当发生读空闲时关闭连接
+                    connection.onReadIdle(120, () -> connection.channel().close());
+                })
                 .handle(this::handleRequest);
     }
 
@@ -74,6 +86,7 @@ public class HttpProxy {
                 .responseConnection((clientResponse, connection) -> {
                     HOP_BY_HOP_HEADERS.forEach(clientResponse.responseHeaders()::remove);
                     clientResponse.responseHeaders().set("x-proxy-by", "proxy");
+                    clientResponse.responseHeaders().set("keep-alive", "timeout=120");
                     return response.status(clientResponse.status())
                             .headers(clientResponse.responseHeaders())
                             .send(connection.inbound().receive().retain());
