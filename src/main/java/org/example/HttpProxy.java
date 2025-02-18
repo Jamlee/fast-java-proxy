@@ -1,8 +1,8 @@
 package org.example;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.timeout.IdleStateHandler;
 import reactor.core.publisher.Flux;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.server.HttpServer;
@@ -22,7 +22,14 @@ import java.util.function.Consumer;
 public class HttpProxy {
     // 添加常量定义
     private static final Set<String> HOP_BY_HOP_HEADERS = Set.of(
-        "connection"
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailer",
+        "transfer-encoding",
+        "upgrade"
     );
 
     private final HttpClient client;
@@ -40,6 +47,7 @@ public class HttpProxy {
 
         this.client = HttpClient.create(provider)
                 .runOn(loop)
+                .keepAlive(true)
                 .responseTimeout(Duration.ofSeconds(30))
                 .doOnConnected(conn -> conn
                         .addHandlerLast(new ReadTimeoutHandler(30, TimeUnit.SECONDS))
@@ -51,7 +59,6 @@ public class HttpProxy {
                 .idleTimeout(Duration.ofSeconds(120))
                 .handle(this::handleRequest);
     }
-
 
     public void start() {
         try {
@@ -72,11 +79,17 @@ public class HttpProxy {
                 .uri(targetUrl)
                 .send(request.receive().retain())
                 .responseConnection((clientResponse, connection) -> {
-                    HOP_BY_HOP_HEADERS.forEach(clientResponse.responseHeaders()::remove);
-                    clientResponse.responseHeaders().set("x-proxy-by", "proxy");
-                    return response.status(clientResponse.status())
-                            .headers(clientResponse.responseHeaders())
-                            .send(connection.inbound().receive().retain());
+                    response.status(clientResponse.status());
+                    clientResponse.responseHeaders().forEach(entry -> {
+                        if (!HOP_BY_HOP_HEADERS.contains(entry.getKey().toLowerCase())) {
+                            response.addHeader(entry.getKey(), entry.getValue());
+                        }
+                    });
+                    response.addHeader("x-proxy-by", "proxy");
+                    response.addHeader(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
+                    response.addHeader(HttpHeaderNames.KEEP_ALIVE, "timeout=120");
+
+                    return response.send(connection.inbound().receive().retain());
                 })
                 .onErrorResume(error ->
                     response.status(502)
