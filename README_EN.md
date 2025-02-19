@@ -2,7 +2,7 @@
 
 > A high-performance HTTP proxy based on Reactor Netty, achieving 8000+ QPS with only 100 lines of code in a single file.
 
-简体中文 | [English](README_EN.md)
+[简体中文](README.md) | English
 
 A high-performance HTTP proxy server implemented in a single file (about 100 lines of code) for performance testing and verification.
 
