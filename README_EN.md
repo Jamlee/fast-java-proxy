@@ -14,12 +14,13 @@ A high-performance HTTP proxy server implemented in a single file (about 100 lin
 
 ## Performance Comparison
 
-| Stack               | QPS   | Notes       |
-|---------------------|-------|-------------|
+| Stack                | QPS   | Notes       |
+|----------------------|-------|-------------|
 | spring cloud gateway | 4800  | Single core |
-| fast-java-proxy     | 11000 | Single core |
-| node                | 4000  | Single core |
-| go                  | 9000  | Single core |
+| fast-java-proxy      | 11000 | Single core |
+| node                 | 9100  | Single core |
+| go                   | 9000  | Single core |
+| python asyncio       | 9000  | Single core |
 
 *single core limit by docker*
 
